@@ -34,11 +34,6 @@
   "Text to speech for Emacs."
   :group 'tools)
 
-(defcustom tts-azure-region "eastus"
-  "Azure TTS region."
-  :type 'string
-  :group 'tts)
-
 (defcustom tts-temp-dir nil
   "A temporary dir to store downloaded files.
 If nil, will use `make-temp-file' to create one."
@@ -70,6 +65,11 @@ Use 'edge-tts --list-voices' to list all available voices."
 (defcustom tts-edge-tts-default-pitch nil
   "Default pitch for edge."
   :type 'string
+  :group 'tts)
+
+(defcustom tts-play-audio-automatically nil
+  "If t, play the audio file after it's generated."
+  :type 'boolean
   :group 'tts)
 
 (cl-defstruct tts--key
@@ -183,6 +183,8 @@ Use 'edge-tts --list-voices' to list all available voices."
     (when (and result
                (file-exists-p (tts--result-media-file result)))
       (message "Text has already been transformed.")
+      (when tts-play-audio-automatically
+        (tts--play-audio (tts--result-media-file result)))
       (cl-return-from tts--by-edge-tts result))
 
     (setq temp-dir (tts--ensure-temp-dir))
@@ -217,6 +219,8 @@ Use 'edge-tts --list-voices' to list all available voices."
                                  )))
     (when (and (= result 0)
                (file-exists-p media-file))
+      (when tts-play-audio-automatically
+        (tts--play-audio media-file))
       (setq result (make-tts--result :text text
                                      :backend backend
                                      :media-file media-file
@@ -224,7 +228,8 @@ Use 'edge-tts --list-voices' to list all available voices."
                                      :volume volume
                                      :rate rate
                                      :pitch pitch
-                                     :voice-name voice-name)))
+                                     :voice-name voice-name))
+      (puthash key result tts--cache))
     result))
 
 (provide 'tts)
