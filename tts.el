@@ -46,7 +46,7 @@ This function should accept an argument, the path of an audio file."
   :type 'function
   :group 'tts)
 
-(defcustom tts-edge-tts-default-voice-name "en-US-AriaNeural"
+(defcustom tts-edge-tts-default-voice "en-US-AriaNeural"
   "Default voice name for edge.
 Use 'edge-tts --list-voices' to list all available voices."
   :type 'string
@@ -70,6 +70,11 @@ Use 'edge-tts --list-voices' to list all available voices."
 (defcustom tts-play-audio-automatically nil
   "If t, play the audio file after it's generated."
   :type 'boolean
+  :group 'tts)
+
+(defcustom tts-default-backend 'edge-tts
+  "Which backend to use, only edge-tts is supported now."
+  :type 'symbol
   :group 'tts)
 
 (cl-defstruct tts--key
@@ -106,7 +111,7 @@ Use 'edge-tts --list-voices' to list all available voices."
   volume
   rate
   pitch
-  voice-name
+  voice
   media-file ;;
   subtitles-file
   )
@@ -142,7 +147,7 @@ Use 'edge-tts --list-voices' to list all available voices."
           (make-directory tts-temp-dir t))))
     temp-dir))
 
-(defvar tts--edge-voice-name tts-edge-tts-default-voice-name)
+(defvar tts--edge-voice tts-edge-tts-default-voice)
 (defvar tts--edge-pitch tts-edge-tts-default-pitch)
 (defvar tts--edge-rate tts-edge-tts-default-rate)
 (defvar tts--edge-volume tts-edge-tts-default-volume)
@@ -154,9 +159,9 @@ Use 'edge-tts --list-voices' to list all available voices."
              (process-live-p proc))
     (kill-process proc)))
 
-(cl-defun tts--by-edge-tts (text &key volume rate pitch voice-name)
+(cl-defun tts--by-edge-tts (text &key volume rate pitch voice)
   "Text to speech via edge-tts."
-  (let ((voice-name (or voice-name tts--edge-voice-name "en-US-JennyNeural"))
+  (let ((voice (or voice tts--edge-voice "en-US-JennyNeural"))
         (pitch (or pitch tts--edge-pitch))
         (volume (or volume tts--edge-volume))
         (rate (or rate tts--edge-rate))
@@ -173,7 +178,7 @@ Use 'edge-tts --list-voices' to list all available voices."
       (message "edge-tts is not available.")
       (cl-return-from tts--by-edge-tts nil))
     
-    (unless (not (string-empty-p text))
+    (when (string-empty-p text)
       (message "Text is empty.")
       (cl-return-from tts--by-edge-tts nil))
 
@@ -183,8 +188,6 @@ Use 'edge-tts --list-voices' to list all available voices."
     (when (and result
                (file-exists-p (tts--result-media-file result)))
       (message "Text has already been transformed.")
-      (when tts-play-audio-automatically
-        (tts--play-audio (tts--result-media-file result)))
       (cl-return-from tts--by-edge-tts result))
 
     (setq temp-dir (tts--ensure-temp-dir))
@@ -209,18 +212,16 @@ Use 'edge-tts --list-voices' to list all available voices."
                             "-t" (concat "\"" text "\"")
                             "--write-media" media-file
                             "--write-subtitles" subtitles-file
-                            "-v" voice-name
+                            "-v" voice
                             args))
       (setq result (call-process "edge-tts" nil t nil
                                  "-t" (concat "\"" text "\"")
                                  "--write-media" media-file
                                  "--write-subtitles" subtitles-file
-                                 "-v" voice-name
+                                 "-v" voice
                                  )))
     (when (and (= result 0)
                (file-exists-p media-file))
-      (when tts-play-audio-automatically
-        (tts--play-audio media-file))
       (setq result (make-tts--result :text text
                                      :backend backend
                                      :media-file media-file
@@ -228,8 +229,22 @@ Use 'edge-tts --list-voices' to list all available voices."
                                      :volume volume
                                      :rate rate
                                      :pitch pitch
-                                     :voice-name voice-name))
+                                     :voice voice))
       (puthash key result tts--cache))
     result))
+
+(defun tts (text &optional volume rate pitch voice backend)
+  "Text to speech."
+  (let (result)
+    (setq result (tts--by-edge-tts text
+                                   :volume volume
+                                   :rate rate
+                                   :pitch pitch
+                                   :voice voice))))
+
+(defun tts-clear-cache ()
+  "Clear tts cache."
+  (interactive)
+  (clrhash tts--cache))
 
 (provide 'tts)
