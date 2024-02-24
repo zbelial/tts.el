@@ -80,22 +80,38 @@ Use 'edge-tts --list-voices' to list all available voices."
 (cl-defstruct tts--key
   text
   backend
+  voice
+  rate
+  volume
+  pitch
   )
 
 (defun tts--key-test-fn (k1 k2)
   (and (string-equal (tts--key-text k1)
                      (tts--key-text k2))
        (string-equal (tts--key-backend k1)
-                     (tts--key-backend k2))))
+                     (tts--key-backend k2))
+       (string-equal (tts--key-voice k1)
+                     (tts--key-voice k2))
+       (string-equal (tts--key-rate k1)
+                     (tts--key-rate k2))
+       (string-equal (tts--key-volume k1)
+                     (tts--key-volume k2))
+       (string-equal (tts--key-pitch k1)
+                     (tts--key-pitch k2))))
 
 (defun tts--key-hash-fn (k)
   (let ((text (tts--key-text k))
         (backend (tts--key-backend k))
+        (voice (tts--key-voice k))
+        (rate (tts--key-rate k))
+        (volume (tts--key-volume k))
+        (pitch (tts--key-pitch k))
         (hash 0))
     (seq-do (lambda (c)
               (setq hash (+ (* 31 hash) c))
               (setq hash (% hash (max-char))))
-            (concat text backend))
+            (concat text backend voice rate volume pitch))
     hash))
 
 (define-hash-table-test 'tts--cache-hash-equal 'tts--key-test-fn 'tts--key-hash-fn)
@@ -183,7 +199,11 @@ Use 'edge-tts --list-voices' to list all available voices."
       (cl-return-from tts--by-edge-tts nil))
 
     (setq key (make-tts--key :text text
-                             :backend backend))
+                             :backend backend
+                             :voice voice
+                             :rate rate
+                             :volume volume
+                             :pitch pitch))
     (setq result (gethash key tts--cache))
     (when (and result
                (file-exists-p (tts--result-media-file result)))
@@ -233,7 +253,7 @@ Use 'edge-tts --list-voices' to list all available voices."
       (puthash key result tts--cache))
     result))
 
-(defun tts (text &optional volume rate pitch voice backend)
+(cl-defun tts (text &key volume rate pitch voice backend)
   "Text to speech."
   (let (result)
     (setq result (tts--by-edge-tts text

@@ -93,6 +93,10 @@ This function is called by `org-babel-execute-src-block'"
          (result-params (assq :result-params processed-params))
          ;; either OUTPUT or VALUE which should behave as described above
          (result-type (assq :result-type processed-params))
+         (rate (assoc-default :rate processed-params))
+         (voice (assoc-default :voice processed-params))
+         (pitch (assoc-default :pitch processed-params))
+         (volume (assoc-default :volume processed-params))
          ;; expand the body with `org-babel-expand-body:tts'
          (full-body (org-babel-expand-body:tts
                      body params processed-params))
@@ -100,7 +104,13 @@ This function is called by `org-babel-execute-src-block'"
     ;; actually execute the source-code block either in a session or
     ;; possibly by dropping it to a temporary file and evaluating the
     ;; file.
-    (setq result (tts full-body))
+    (message "params: %s" params)
+    (message "rate: %s" rate)
+    (setq result (tts full-body
+                      :voice (if voice (format "%s" voice))
+                      :rate (if rate (format "%s" rate))
+                      :pitch (if pitch (format "%s" pitch))
+                      :volume (if volume (format "%s" volume))))
     (when (and result
                (file-exists-p (tts--result-media-file result)))
       (format "[[elisp:(tts--play-audio \"%s\")][Play]]" (tts--result-media-file result)))))
