@@ -262,6 +262,7 @@ Use 'edge-tts --list-voices' to list all available voices."
                                    :pitch pitch
                                    :voice voice))))
 
+;;;###autoload
 (defun tts-play (text)
   "Apply tts to TEXT and play the audio generated."
   (interactive
@@ -277,6 +278,7 @@ Use 'edge-tts --list-voices' to list all available voices."
     (when-let ((result (tts text)))
       (tts--play-audio (tts--result-media-file result)))))
 
+;;;###autoload
 (defun tts-clear-cache ()
   "Clear tts cache."
   (interactive)
