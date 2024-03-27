@@ -262,6 +262,21 @@ Use 'edge-tts --list-voices' to list all available voices."
                                    :pitch pitch
                                    :voice voice))))
 
+(defun tts-play (text)
+  "Apply tts to TEXT and play the audio generated."
+  (interactive
+   (list
+    (let (txt)
+      (cond ((region-active-p)
+             (setq txt (buffer-substring-no-properties (region-beginning) (region-end))))
+            (t
+             (setq txt (read-string "Text: "))))
+      txt)))
+  (when (and text
+             (length> (string-trim text) 0))
+    (when-let ((result (tts text)))
+      (tts--play-audio (tts--result-media-file result)))))
+
 (defun tts-clear-cache ()
   "Clear tts cache."
   (interactive)
